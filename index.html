@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Higher Order</title>
+
+    <!-- mathjax renders the equations nicely -->
+    <!-- I found this setup in the mathjax docs -->
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
+            startup: { typeset: false }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="app">
+
+    <!-- intro modal - shown on first load, dismissed with the start button -->
+    <div id="intro-modal">
+        <div id="intro-box">
+            <div id="intro-title">Higher Order</div>
+            <p>Each round you'll see a differential equation and an initial condition.</p>
+            <p>We'll solve it numerically up to <strong>t = 5</strong> and ask you whether this round's <strong>y(5)</strong> is higher or lower than the previous round's answer.</p>
+            <p>10 rounds. 9 guesses. Round 1 just shows you the first answer since there's nothing to compare it to yet.</p>
+            <button class="btn btn-neutral" id="intro-start-btn" onclick="closeIntro()">
+                Let's go! →
+            </button>
+        </div>
+    </div>
+
+    <!-- site title -->
+    <div id="site-title">Higher Order</div>
+
+    <!-- score bar at the top -->
+    <div id="score-bar">
+        <span>Round <strong id="hud-round">1</strong> / 10</span>
+        <span>Score <strong id="hud-score">0 / 0</strong></span>
+        <span>Streak <strong id="hud-streak">0</strong></span>
+    </div>
+
+    <!-- main game stuff -->
+    <div id="game-area">
+
+        <!-- shows the ODE for this round -->
+        <div class="card">
+            <div id="round-pill">Round 1</div>
+            <div class="small-label">Solve this ODE</div>
+            <div id="equation-display">loading...</div>
+            <div id="ic-line">y(0) = ?</div>
+            <div class="question-line">What is <em>y</em>(5)?</div>
+        </div>
+
+        <!-- shows last round's answer (hidden on round 1) -->
+        <div id="prev-answer-bar" class="hidden">
+            Previous round: <strong id="prev-answer-value">—</strong>
+            &nbsp;·&nbsp; Will y(5) be higher or lower?
+        </div>
+
+        <!-- guess buttons -->
+        <div id="button-area">
+            <button class="btn btn-higher" onclick="onGuess('higher')">
+                ▲ Higher
+            </button>
+            <button class="btn btn-lower" onclick="onGuess('lower')">
+                ▼ Lower
+            </button>
+        </div>
+
+        <!-- round 1 is special - we just show the answer, no guessing -->
+        <div id="round1-panel" class="hidden">
+            <div class="round1-note">No guess needed for Round 1, answer already given.</div>
+            <div class="round1-answer" id="round1-answer-value">y(5) = ?</div>
+            <canvas id="sparkline-r1" width="250" height="80"></canvas>
+            <div class="sparkline-caption">t = 0 → 5</div>
+            <button class="btn btn-neutral" onclick="onStartGuessing()">
+                Got it, start guessing →
+            </button>
+        </div>
+
+        <!-- shown after you make a guess -->
+        <div id="reveal-panel" class="hidden">
+            <div class="verdict" id="verdict-text">?</div>
+            <div class="true-answer-line">
+                y(5) = <strong id="true-answer-value">?</strong>
+            </div>
+            <canvas id="sparkline" width="250" height="80"></canvas>
+            <div class="sparkline-caption">t = 0 → 5</div>
+            <button class="btn btn-neutral" id="btn-next" onclick="onNext()">
+                Next round →
+            </button>
+        </div>
+
+    </div>
+
+    <!-- final score screen, hidden until game ends -->
+    <div id="final-screen" class="hidden">
+        <div class="final-title">Game Over</div>
+        <div class="final-stats">
+            <div class="stat-block">
+                <div class="stat-number" id="final-score">0</div>
+                <div class="stat-label">Correct / 9</div>
+            </div>
+            <div class="stat-block">
+                <div class="stat-number" id="final-streak">0</div>
+                <div class="stat-label">Best Streak</div>
+            </div>
+        </div>
+        <button class="btn btn-neutral" style="max-width: 220px; margin: 0 auto; display: block;" onclick="onPlayAgain()">
+            Play Again
+        </button>
+    </div>
+
+</div>
+
+<script src="game.js"></script>
+<script>
+// this script handles all the UI updates
+// the actual math is in game.js
+
+// show a number rounded to 3 decimals
+function showNum(val) {
+    return val.toFixed(3)
+}
+
+// update the score bar at the top
+function updateHUD() {
+    document.getElementById('hud-round').textContent = game.currentRound + 1
+    var guessCount = Math.min(game.currentRound, 9)
+    document.getElementById('hud-score').textContent = game.score + ' / ' + guessCount
+    document.getElementById('hud-streak').textContent = game.streak
+}
+
+// show or hide an element
+function show(id) {
+    document.getElementById(id).classList.remove('hidden')
+}
+function hide(id) {
+    document.getElementById(id).classList.add('hidden')
+}
+
+// draws the solution curve on a canvas
+// trajectory is an array of {t, y} objects from rk4
+function drawSparkline(trajectory, canvasId) {
+    var canvas = document.getElementById(canvasId)
+    if (!canvas) {
+        console.log("canvas not found: " + canvasId)
+        return
+    }
+
+    var ctx = canvas.getContext('2d')
+    var W = canvas.width
+    var H = canvas.height
+
+    ctx.clearRect(0, 0, W, H)
+
+    // find min and max y to scale the drawing
+    var yMin = trajectory[0].y
+    var yMax = trajectory[0].y
+    for (var i = 0; i < trajectory.length; i++) {
+        if (trajectory[i].y < yMin) yMin = trajectory[i].y
+        if (trajectory[i].y > yMax) yMax = trajectory[i].y
+    }
+
+    // add some padding so the line doesn't touch the edges
+    var pad = (yMax - yMin) * 0.12
+    if (pad == 0) pad = 1  // fallback if the line is flat
+    yMin = yMin - pad
+    yMax = yMax + pad
+
+    var tMin = trajectory[0].t
+    var tMax = trajectory[trajectory.length - 1].t
+
+    // converts a t value to an x pixel
+    function tx(t) {
+        return ((t - tMin) / (tMax - tMin)) * W
+    }
+
+    // converts a y value to a y pixel (canvas is flipped so 0 is top)
+    function ty(y) {
+        return H - ((y - yMin) / (yMax - yMin)) * H
+    }
+
+    // draw the line
+    ctx.beginPath()
+    ctx.moveTo(tx(trajectory[0].t), ty(trajectory[0].y))
+    for (var j = 1; j < trajectory.length; j++) {
+        ctx.lineTo(tx(trajectory[j].t), ty(trajectory[j].y))
+    }
+    ctx.strokeStyle = '#1a1714'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+
+    // draw a dot at the end point (that's y(5))
+    var last = trajectory[trajectory.length - 1]
+    ctx.beginPath()
+    ctx.arc(tx(last.t), ty(last.y), 4, 0, Math.PI * 2)
+    ctx.fillStyle = '#c8401a'
+    ctx.fill()
+}
+
+// update the equation display for the current round
+function renderEquation() {
+    var r = game.rounds[game.currentRound]
+
+    document.getElementById('round-pill').textContent = 'Round ' + (game.currentRound + 1)
+    document.getElementById('equation-display').innerHTML = '\\(' + r.latex + '\\)'
+    document.getElementById('ic-line').textContent = 'y(0) = ' + r.y0
+
+    // tell mathjax to re-render
+    if (window.MathJax && MathJax.typesetPromise) {
+        MathJax.typesetPromise([document.getElementById('equation-display')])
+    }
+
+    updateHUD()
+}
+
+// set up the UI for the guessing phase (rounds 2-10)
+function showGuessing() {
+    show('game-area')
+    show('button-area')
+    hide('reveal-panel')
+    hide('round1-panel')
+    hide('final-screen')
+
+    if (game.lastAnswer != null) {
+        document.getElementById('prev-answer-value').textContent = showNum(game.lastAnswer)
+        show('prev-answer-bar')
+    } else {
+        hide('prev-answer-bar')
+    }
+}
+
+// set up the UI for round 1 (no guessing, just shows the answer)
+function showRound1() {
+    show('game-area')
+    hide('button-area')
+    hide('reveal-panel')
+    show('round1-panel')
+    hide('prev-answer-bar')
+    hide('final-screen')
+
+    var r = game.rounds[0]
+    document.getElementById('round1-answer-value').textContent = 'y(5) = ' + showNum(r.answer)
+    drawSparkline(r.trajectory, 'sparkline-r1')
+}
+
+// set up the UI after a guess is submitted
+function showReveal(correct) {
+    hide('button-area')
+    show('reveal-panel')
+
+    var r = game.rounds[game.currentRound]
+
+    var verdictEl = document.getElementById('verdict-text')
+    if (correct) {
+        verdictEl.textContent = 'Correct!'
+        verdictEl.className = 'verdict correct'
+    } else {
+        verdictEl.textContent = 'Wrong.'
+        verdictEl.className = 'verdict wrong'
+    }
+
+    document.getElementById('true-answer-value').textContent = showNum(r.answer)
+
+    // change button text on last round
+    if (game.currentRound == 9) {
+        document.getElementById('btn-next').textContent = 'See final score →'
+    } else {
+        document.getElementById('btn-next').textContent = 'Next round →'
+    }
+
+    drawSparkline(r.trajectory, 'sparkline')
+    updateHUD()
+}
+
+// show the end screen
+function showFinal() {
+    hide('game-area')
+    show('final-screen')
+    document.getElementById('score-bar').style.display = 'none'
+    document.getElementById('final-score').textContent = game.score
+    document.getElementById('final-streak').textContent = game.bestStreak
+}
+
+
+// ---- button handlers ----
+
+function onGuess(guess) {
+    var correct = checkGuess(guess)
+    showReveal(correct)
+}
+
+function onStartGuessing() {
+    nextRound()
+    if (game.phase == 'done') {
+        showFinal()
+        return
+    }
+    renderEquation()
+    showGuessing()
+}
+
+function onNext() {
+    nextRound()
+    if (game.phase == 'done') {
+        showFinal()
+        return
+    }
+    renderEquation()
+    showGuessing()
+}
+
+function onPlayAgain() {
+    document.getElementById('score-bar').style.display = ''
+    initGame()
+    solveRound()
+    renderEquation()
+    showRound1()
+}
+
+
+// closes the intro modal
+function closeIntro() {
+    document.getElementById('intro-modal').style.display = 'none'
+}
+
+// ---- start the game ----
+
+initGame()
+solveRound()
+renderEquation()
+showRound1()
+
+</script>
+</body>
+</html>

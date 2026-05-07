@@ -1,0 +1,309 @@
+/* style.css - styles for my ODE game */
+/* I tried to keep this simple, most of the layout is just flexbox */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: #fafafa;
+    color: #222;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    padding: 30px 15px 60px 15px;
+    display: flex;
+    justify-content: center;
+}
+
+#app {
+    width: 100%;
+    max-width: 540px;
+}
+
+/* site title above the score bar */
+#site-title {
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 12px;
+    color: #222;
+}
+
+/* top bar with score info */
+#score-bar {
+    background: white;
+    color: #222;
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 10px;
+    border: 1.5px solid #222;
+}
+
+#score-bar strong {
+    color: #222;
+}
+
+/* main white card area */
+.card {
+    background: white;
+    border: 1.5px solid #222;
+    padding: 20px;
+    margin-bottom: 8px;
+}
+
+/* round number text */
+#round-pill {
+    color: #2563a8;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.small-label {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+/* where the equation shows up */
+#equation-display {
+    font-size: 22px;
+    margin-bottom: 10px;
+    margin-top: 10px;
+    min-height: 40px;
+}
+
+#ic-line {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 6px;
+}
+
+.question-line {
+    font-size: 14px;
+    font-weight: bold;
+    margin-top: 12px;
+}
+
+/* shows previous rounds answer */
+#prev-answer-bar {
+    background: #eef2f7;
+    border: 1.5px solid #222;
+    padding: 10px 15px;
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 8px;
+}
+
+#prev-answer-bar strong {
+    color: #222;
+    font-size: 15px;
+}
+
+/* higher/lower buttons */
+#button-area {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.btn {
+    flex: 1;
+    padding: 15px 10px;
+    font-family: Arial, sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+}
+
+.btn:hover {
+    opacity: 0.85;
+}
+
+.btn-higher {
+    background: #4caf50;
+    color: white;
+}
+
+.btn-lower {
+    background: #f44336;
+    color: white;
+}
+
+.btn-neutral {
+    background: #555;
+    color: white;
+    flex: 1;
+    padding: 12px;
+}
+
+/* the panel that shows after you guess */
+#reveal-panel {
+    background: white;
+    border: 1.5px solid #222;
+    padding: 20px;
+    margin-bottom: 8px;
+}
+
+.verdict {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+/* green if right, red if wrong */
+.verdict.correct { color: #2d6a2d; }
+.verdict.wrong   { color: #b22222; }
+
+.true-answer-line {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 15px;
+}
+
+.true-answer-line strong {
+    color: #222;
+    font-size: 16px;
+}
+
+/* canvas for the solution curve */
+#sparkline {
+    display: block;
+    width: 100%;
+    max-width: 250px;
+    height: 80px;
+    border-bottom: 1px solid #aaa;
+    margin-bottom: 4px;
+    margin-top: 8px;
+}
+
+#sparkline-r1 {
+    display: block;
+    width: 100%;
+    max-width: 250px;
+    height: 80px;
+    border-bottom: 1px solid #aaa;
+    margin-bottom: 4px;
+    margin-top: 8px;
+}
+
+.sparkline-caption {
+    font-size: 11px;
+    color: #777;
+    margin-bottom: 15px;
+}
+
+/* round 1 special panel */
+#round1-panel {
+    background: white;
+    border: 1.5px solid #222;
+    padding: 20px;
+    margin-bottom: 8px;
+}
+
+.round1-note {
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 10px;
+}
+
+.round1-answer {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+
+/* end screen */
+#final-screen {
+    background: white;
+    border: 1.5px solid #222;
+    padding: 35px 25px;
+    text-align: center;
+}
+
+.final-title {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 25px;
+}
+
+.final-stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-bottom: 25px;
+}
+
+.stat-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.stat-number {
+    font-size: 38px;
+    font-weight: bold;
+    line-height: 1;
+    color: #2563a8;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #666;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* intro modal overlay */
+#intro-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 16px;
+}
+
+#intro-box {
+    background: white;
+    border: 1.5px solid #222;
+    padding: 30px 25px;
+    max-width: 420px;
+    width: 100%;
+}
+
+#intro-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 16px;
+}
+
+#intro-box p {
+    font-size: 13px;
+    color: #444;
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+#intro-box strong {
+    color: #222;
+}
+
+#intro-start-btn {
+    margin-top: 18px;
+    width: 100%;
+    padding: 14px;
+}
